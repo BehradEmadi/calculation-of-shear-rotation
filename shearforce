@@ -1,0 +1,58 @@
+function [shearforcevalue, shearforcevars] = shearforce(beamnode, nbeams)
+    % Function to calculate shear force values and corresponding variable names
+    global knownfxfym valuefxfym reactionsCOM % knownfxfym = force names, reactionsCOM= support reactions, valuefxfym= values of forces
+
+    % Initialize variables
+    forcename = cell(beamnode, 1);
+    forcevalue = zeros(1, beamnode);
+    
+    % Generate force variable names for each beam node
+    for i = 1:beamnode
+        forcename{i} = ['V' sprintf('%04.0f', i)];
+    end
+    
+    % Populate force values based on known forces
+    for i = 1:beamnode
+        aux2 = str2double(forcename{i}(2:end));
+        idx = find(knownfxfym{2} == aux2, 1);
+        if ~isempty(idx)
+            forcevalue(1, i) = valuefxfym{2}(idx);
+        end
+    end
+
+    % Add reaction forces to the corresponding force values
+    mearow = length(reactionsCOM);
+    for ime = 1:mearow
+        idx = find(strcmp(reactionsCOM{ime, 1}, forcename));
+        if ~isempty(idx)
+            forcevalue(1, idx) = reactionsCOM{ime, 2} + forcevalue(1, idx);
+        end
+    end
+
+    % Generate shear force variable names
+    shearforcevars = cell(2 * nbeams, 1);
+    count = 1;
+    for i = 1:nbeams
+        for beamn = 1:2
+            idx = (i - 1) * 2 + beamn;
+            shearforcevars{idx} = ['V' sprintf('%04.0f', count)];
+            count = count + 1;
+        end
+        count = count - 1; % Adjust count to repeat the last node for the next beam
+    end
+    
+    % Calculate shear force values
+    shearforcevalue = zeros(length(shearforcevars), 1);
+    shearforcevalue(1) = forcevalue(1); % Initial force value
+
+    if beamnode > 2
+        cont5 = 2;
+        for i = 2:nbeams
+            shearforcevalue(cont5) = shearforcevalue(cont5 - 1);
+            cont5 = cont5 + 1;
+            shearforcevalue(cont5) = forcevalue(i) + shearforcevalue(cont5 - 1);
+            cont5 = cont5 + 1;
+        end
+        shearforcevalue(cont5) = shearforcevalue(cont5 - 1); % Last force value
+    end
+end
